@@ -1,0 +1,2571 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>DexOS v8 Lite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- React + Babel CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+
+      :root {
+        --glass-bg: rgba(255, 255, 255, 0.12);
+        --glass-border: rgba(255, 255, 255, 0.35);
+        --accent: #4da6ff;
+        --accent-soft: rgba(77, 166, 255, 0.5);
+        --bg-gradient-light: radial-gradient(circle at top, #3a4f80, #0a101c);
+        --bg-gradient-dark: radial-gradient(circle at top, #131826, #020309);
+        --base-font: 14px;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          "Segoe UI", sans-serif;
+        background: black;
+        color: white;
+        overflow: hidden;
+        font-size: var(--base-font);
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      #root { height: 100vh; width: 100vw; }
+
+      @keyframes floatGlow {
+        0% { transform: translate3d(-10px, 10px, 0) scale(1.02); opacity: 0.7; }
+        50% { transform: translate3d(10px, -10px, 0) scale(1.05); opacity: 1; }
+        100% { transform: translate3d(-10px, 10px, 0) scale(1.02); opacity: 0.7; }
+      }
+
+      @keyframes slowGradient {
+        0% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(-40px, -30px, 0) scale(1.1); }
+        100% { transform: translate3d(0, 0, 0) scale(1); }
+      }
+
+      @keyframes windowIn {
+        from { opacity: 0; transform: translateY(14px) scale(0.96); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      @keyframes bootScan {
+        0% { text-shadow: 0 0 6px #0f0; }
+        50% { text-shadow: 0 0 18px #7fff7f; }
+        100% { text-shadow: 0 0 6px #0f0; }
+      }
+
+      .boot-screen {
+        height: 100vh;
+        width: 100vw;
+        background: black radial-gradient(circle at top, #163216, #000000);
+        color: #0f0;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        font-family: "SF Mono", "Courier New", monospace;
+        white-space: pre-wrap;
+        font-size: 13px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .boot-scan-bar {
+        position: absolute;
+        left: 0; right: 0;
+        top: -40%;
+        height: 50%;
+        background: linear-gradient(
+          rgba(0, 255, 0, 0),
+          rgba(0, 255, 0, 0.15),
+          rgba(0, 255, 0, 0)
+        );
+        mix-blend-mode: screen;
+        animation: bootScan 2s infinite linear;
+      }
+
+      .boot-logo {
+        text-align: center;
+        margin-top: auto;
+        margin-bottom: auto;
+        font-size: 30px;
+        color: #fff;
+        letter-spacing: 4px;
+      }
+
+      .login-screen {
+        height: 100vh;
+        width: 100vw;
+        background: radial-gradient(circle at top, #3a4f80, #050814);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .login-animated-bg {
+        position: absolute;
+        inset: -20%;
+        background:
+          radial-gradient(circle at 15% 20%, #4da6ff55, transparent 60%),
+          radial-gradient(circle at 80% 80%, #ff4df055, transparent 60%),
+          radial-gradient(circle at 50% 0%, #ffffff33, transparent 60%);
+        filter: blur(10px);
+        animation: slowGradient 18s ease-in-out infinite alternate;
+      }
+
+      .login-card {
+        position: relative;
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: 24px;
+        padding: 24px 28px;
+        backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        text-align: center;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.85);
+        min-width: 260px;
+        z-index: 1;
+      }
+
+      .login-avatar {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        margin: 0 auto 14px;
+        background: radial-gradient(circle at 30% 0, #fff, #4da6ff);
+        box-shadow: 0 0 24px var(--accent-soft);
+        animation: floatGlow 8s ease-in-out infinite;
+      }
+
+      .login-title { font-size: 20px; margin-bottom: 4px; }
+      .login-sub { font-size: 12px; opacity: 0.8; margin-bottom: 14px; }
+
+      .login-input {
+        margin-top: 6px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.32);
+        background: rgba(0, 0, 0, 0.35);
+        color: white;
+        width: 220px;
+        max-width: 70vw;
+        outline: none;
+        font-size: 13px;
+        transition: border 0.15s ease, box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+
+      .login-input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 12px var(--accent-soft);
+        background: rgba(0, 0, 0, 0.6);
+      }
+
+      .login-button {
+        margin-top: 14px;
+        padding: 8px 20px;
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, #4da6ff, #8a7bff);
+        color: white;
+        cursor: pointer;
+        font-weight: 500;
+        box-shadow: 0 0 14px var(--accent-soft);
+        font-size: 13px;
+        transition: transform 0.12s ease, box-shadow 0.12s ease,
+          filter 0.12s ease;
+        touch-action: manipulation;
+      }
+
+      .login-button:hover {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 25px rgba(0, 0, 0, 0.9);
+      }
+
+      .login-error {
+        margin-top: 8px;
+        color: #ff8080;
+        font-size: 11px;
+      }
+
+      .desktop {
+        height: 100vh;
+        width: 100vw;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .desktop.light { background: var(--bg-gradient-light); }
+      .desktop.dark { background: var(--bg-gradient-dark); }
+
+      .desktop-wallpaper-layer {
+        position: absolute;
+        inset: -15%;
+        pointer-events: none;
+        filter: blur(8px);
+        animation: slowGradient 30s ease-in-out infinite alternate;
+        opacity: 0.85;
+      }
+
+      .wallpaper-default {
+        background:
+          radial-gradient(circle at 10% 20%, #4da6ff55, transparent 60%),
+          radial-gradient(circle at 80% 80%, #ff4df055, transparent 60%),
+          radial-gradient(circle at 50% 0%, #ffffff22, transparent 60%);
+      }
+
+      .wallpaper-ocean {
+        background:
+          radial-gradient(circle at 10% 20%, #00c3ff66, transparent 60%),
+          radial-gradient(circle at 80% 90%, #0061ff66, transparent 60%),
+          radial-gradient(circle at 50% 0%, #ffffff22, transparent 60%);
+      }
+
+      .wallpaper-sunset {
+        background:
+          radial-gradient(circle at 10% 20%, #ff996666, transparent 60%),
+          radial-gradient(circle at 80% 80%, #ff5e6266, transparent 60%),
+          radial-gradient(circle at 50% 0%, #ffffff22, transparent 60%);
+      }
+
+      .wallpaper-neon {
+        background:
+          radial-gradient(circle at 10% 20%, #ff00ff66, transparent 60%),
+          radial-gradient(circle at 80% 80%, #00ffff66, transparent 60%),
+          radial-gradient(circle at 30% 90%, #ffea0066, transparent 60%);
+      }
+
+      .desktop-icons {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        z-index: 1;
+      }
+
+      .icon {
+        width: 78px;
+        text-align: center;
+        color: white;
+        cursor: pointer;
+        user-select: none;
+        font-size: 11px;
+        text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+        touch-action: manipulation;
+      }
+
+      .icon-emoji {
+        width: 56px;
+        height: 56px;
+        margin: 0 auto 4px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.9);
+        transition: transform 0.18s ease, box-shadow 0.18s ease,
+          background 0.18s ease;
+      }
+
+      .icon:hover .icon-emoji {
+        transform: translateY(-3px) scale(1.05);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 1);
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      .dock {
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 6px 14px;
+        border-radius: 999px;
+        background: rgba(15, 15, 22, 0.86);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(24px);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: white;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.95);
+        z-index: 3;
+      }
+
+      .dock-inner {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+      }
+
+      .dock-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 1);
+        transition: transform 0.12s ease, box-shadow 0.12s ease,
+          background 0.12s ease;
+        transform-origin: bottom center;
+        transform: scale(var(--dock-scale, 1));
+        touch-action: manipulation;
+      }
+
+      .dock-icon:hover { background: rgba(255, 255, 255, 0.2); }
+
+      .dock-separator {
+        width: 1px;
+        height: 28px;
+        background: rgba(255, 255, 255, 0.22);
+        margin: 0 6px;
+      }
+
+      .taskbar-right {
+        margin-left: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        opacity: 0.95;
+      }
+
+      .taskbar-user { font-size: 11px; opacity: 0.85; }
+
+      .spotlight-bar {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(280px, 80vw);
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        backdrop-filter: blur(20px);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #eee;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.95);
+        z-index: 4;
+      }
+
+      .spotlight-input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        color: #fff;
+        font-size: 13px;
+        outline: none;
+      }
+
+      .window {
+        position: absolute;
+        min-width: 260px;
+        max-width: 92vw;
+        min-height: 200px;
+        max-height: 80vh;
+        background: radial-gradient(circle at top left,
+            rgba(255, 255, 255, 0.28),
+            rgba(255, 255, 255, 0.08));
+        border-radius: 18px;
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(26px);
+        box-shadow: 0 20px 55px rgba(0, 0, 0, 0.95);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        z-index: 2;
+        animation: windowIn 0.22s ease-out;
+        transition: box-shadow 0.18s ease, transform 0.18s ease;
+      }
+
+      .window-focused {
+        box-shadow: 0 26px 70px rgba(0, 0, 0, 1),
+          0 0 0 1px rgba(255, 255, 255, 0.08);
+        transform: translateY(-1px);
+      }
+
+      .window-header {
+        height: 30px;
+        padding: 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: move;
+        background: linear-gradient(
+          to right,
+          rgba(10, 10, 14, 0.9),
+          rgba(10, 10, 18, 0.65)
+        );
+        color: #f5f5f5;
+        font-size: 12px;
+      }
+
+      .window-dots { display: flex; gap: 6px; }
+
+      .window-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .dot-close { background: #ff5f57; }
+      .dot-minimize { background: #febc2e; }
+      .dot-maximize { background: #28c840; }
+
+      .window-title { margin-left: 4px; }
+
+      .window-body {
+        padding: 8px;
+        font-size: 13px;
+        color: #111;
+        background: linear-gradient(
+          145deg,
+          rgba(245, 245, 245, 0.8),
+          rgba(232, 232, 245, 0.5)
+        );
+        overflow: auto;
+        flex: 1;
+      }
+
+      .window-resizer {
+        position: absolute;
+        right: 4px;
+        bottom: 4px;
+        width: 12px;
+        height: 12px;
+        border-right: 2px solid rgba(0, 0, 0, 0.4);
+        border-bottom: 2px solid rgba(0, 0, 0, 0.4);
+        cursor: se-resize;
+      }
+
+      .browser-controls {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 6px;
+        align-items: center;
+      }
+
+      .browser-nav-buttons {
+        display: flex;
+        gap: 4px;
+      }
+
+      .browser-nav-button {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .browser-url {
+        flex: 1;
+        padding: 5px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        font-size: 13px;
+      }
+
+      .browser-button {
+        padding: 5px 10px;
+        border-radius: 999px;
+        border: none;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      .browser-frame {
+        width: 100%;
+        height: 240px;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        background: white;
+      }
+
+      .browser-history {
+        margin-top: 6px;
+        font-size: 11px;
+        max-height: 70px;
+        overflow-y: auto;
+      }
+
+      .browser-history span {
+        display: inline-block;
+        margin-right: 6px;
+        margin-bottom: 4px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.06);
+        cursor: pointer;
+      }
+
+      .terminal {
+        background: radial-gradient(circle at top left, #05060a, #020309);
+        color: #0f0;
+        font-family: "SF Mono", "Courier New", monospace;
+        font-size: 12px;
+        border-radius: 12px;
+        padding: 6px;
+        height: 230px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+
+      .terminal-input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: #0f0;
+        font: inherit;
+        outline: none;
+      }
+
+      .snake-canvas {
+        background: #000;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.4);
+        display: block;
+        margin: 0 auto 6px;
+      }
+
+      .snake-controls {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      .snake-controls button {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        border: none;
+        background: rgba(0, 0, 0, 0.12);
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      .settings-section {
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      }
+
+      .settings-label { font-weight: 600; margin-bottom: 4px; }
+
+      .settings-input {
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.18);
+        width: 100%;
+        font-size: 13px;
+      }
+
+      .settings-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .settings-button {
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: none;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+        font-size: 12px;
+        touch-action: manipulation;
+      }
+
+      .settings-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.06);
+        font-size: 11px;
+      }
+
+      .file-list {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+      }
+
+      .file-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+
+      .file-item:hover {
+        background: rgba(0, 0, 0, 0.06);
+      }
+
+      .file-icon {
+        width: 18px;
+        text-align: center;
+      }
+
+      .file-name { flex: 1; }
+
+      .music-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .music-item {
+        padding: 4px 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+      }
+
+      .music-item:hover {
+        background: rgba(0, 0, 0, 0.06);
+      }
+
+      .music-controls {
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .appstore-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 8px;
+      }
+
+      .appstore-card {
+        background: rgba(255, 255, 255, 0.6);
+        border-radius: 12px;
+        padding: 6px;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .appstore-emoji {
+        font-size: 22px;
+        margin-bottom: 4px;
+      }
+
+      .appstore-button {
+        margin-top: 4px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: none;
+        background: var(--accent);
+        color: white;
+        cursor: pointer;
+        font-size: 11px;
+        touch-action: manipulation;
+      }
+
+      .notes-textarea {
+        width: 100%;
+        height: 200px;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        padding: 6px 8px;
+        resize: none;
+        font-size: 13px;
+      }
+
+      .calc-display {
+        width: 100%;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.16);
+        margin-bottom: 6px;
+        text-align: right;
+        font-size: 18px;
+      }
+
+      .calc-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+      }
+
+      .calc-button {
+        padding: 8px 0;
+        border-radius: 8px;
+        border: none;
+        background: rgba(0, 0, 0, 0.08);
+        cursor: pointer;
+        font-size: 14px;
+        touch-action: manipulation;
+      }
+
+      .calc-button.op {
+        background: rgba(77, 166, 255, 0.2);
+      }
+
+      .paint-canvas {
+        background: #ffffff;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        display: block;
+        margin-bottom: 8px;
+        touch-action: none;
+      }
+
+      .shutdown-screen {
+        height: 100vh;
+        width: 100vw;
+        background: radial-gradient(circle at top, #200000, #000000);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #ff6b6b;
+        text-align: center;
+      }
+
+      .shutdown-sub { color: #ff9b9b; margin-top: 8px; }
+
+      @media (max-width: 768px) {
+        :root { --base-font: 13px; }
+        .login-card { padding: 20px 22px; border-radius: 20px; }
+        .login-avatar { width: 68px; height: 68px; }
+        .dock { padding: 6px 10px; }
+        .dock-icon { width: 42px; height: 42px; font-size: 20px; }
+        .desktop-icons { top: 10px; left: 10px; }
+        .window { max-width: 96vw; max-height: 78vh; }
+        .browser-frame { height: 210px; }
+        .terminal { height: 210px; }
+      }
+
+      @media (max-width: 480px) {
+        .login-card { width: 90vw; }
+        .login-input { width: 80%; }
+        .dock { scale: 0.9; bottom: 6px; }
+        .icon { width: 70px; }
+        .icon-emoji { width: 52px; height: 52px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, useRef } = React;
+
+      function useWindowFrame(initialPos, initialSize) {
+        const [position, setPosition] = useState(initialPos);
+        const [size, setSize] = useState(initialSize);
+        const [focused, setFocused] = useState(false);
+        const dragging = useRef(false);
+        const resizing = useRef(false);
+        const dragOffset = useRef({ x: 0, y: 0 });
+        const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0 });
+
+        const onHeaderMouseDown = (e) => {
+          dragging.current = true;
+          dragOffset.current = {
+            x: e.clientX - position.x,
+            y: e.clientY - position.y,
+          };
+          setFocused(true);
+        };
+
+        const onResizerMouseDown = (e) => {
+          e.stopPropagation();
+          resizing.current = true;
+          resizeStart.current = {
+            x: e.clientX,
+            y: e.clientY,
+            w: size.width,
+            h: size.height,
+          };
+          setFocused(true);
+        };
+
+        const onMouseMove = (e) => {
+          if (dragging.current) {
+            setPosition({
+              x: e.clientX - dragOffset.current.x,
+              y: e.clientY - dragOffset.current.y,
+            });
+          } else if (resizing.current) {
+            const dx = e.clientX - resizeStart.current.x;
+            const dy = e.clientY - resizeStart.current.y;
+            setSize({
+              width: Math.max(260, resizeStart.current.w + dx),
+              height: Math.max(200, resizeStart.current.h + dy),
+            });
+          }
+        };
+
+        const onMouseUp = () => {
+          dragging.current = false;
+          resizing.current = false;
+        };
+
+        useEffect(() => {
+          window.addEventListener("mousemove", onMouseMove);
+          window.addEventListener("mouseup", onMouseUp);
+          return () => {
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+          };
+        });
+
+        return {
+          position,
+          size,
+          focused,
+          setFocused,
+          onHeaderMouseDown,
+          onResizerMouseDown,
+        };
+      }
+
+      function DexWindow({ title, children, initialPos, initialSize, onClose }) {
+        const {
+          position,
+          size,
+          focused,
+          setFocused,
+          onHeaderMouseDown,
+          onResizerMouseDown,
+        } = useWindowFrame(initialPos, initialSize || { width: 480, height: 360 });
+
+        const onClick = () => setFocused(true);
+
+        return (
+          <div
+            className={"window" + (focused ? " window-focused" : "")}
+            style={{
+              left: position.x,
+              top: position.y,
+              width: size.width,
+              height: size.height,
+            }}
+            onMouseDown={onClick}
+          >
+            <div className="window-header" onMouseDown={onHeaderMouseDown}>
+              <div className="window-dots">
+                <div className="window-dot dot-close" onClick={onClose}></div>
+                <div className="window-dot dot-minimize"></div>
+                <div className="window-dot dot-maximize"></div>
+              </div>
+              <div className="window-title">{title}</div>
+            </div>
+            <div className="window-body">{children}</div>
+            <div className="window-resizer" onMouseDown={onResizerMouseDown} />
+          </div>
+        );
+      }
+
+      function BootScreen({ onDone }) {
+        const [log, setLog] = useState("");
+        const lines = [
+          "DexOS BIOS v8.0",
+          "Initializing glass compositor...",
+          "Loading user profile...",
+          "Mounting virtual filesystem...",
+          "Probing memory... OK",
+          "Enumerating devices... OK",
+          "Boot device: GITHUB-PAGES",
+          "Starting DexOS kernel...",
+          "Launching graphical shell...",
+          "Launching DexOS Lite System.exe",
+          "Initializing BIOS",
+          "Initializing System",
+          "launching System",
+        ];
+
+        useEffect(() => {
+          let i = 0;
+          function typeLine() {
+            if (i >= lines.length) {
+              setTimeout(onDone, 800);
+              return;
+            }
+            setLog((prev) => prev + lines[i] + "\n");
+            i++;
+            setTimeout(typeLine, 260);
+          }
+          typeLine();
+        }, []);
+
+        return (
+          <div className="boot-screen">
+            <div className="boot-scan-bar" />
+            <div>{log}</div>
+            <div className="boot-logo">DexOS</div>
+          </div>
+        );
+      }
+
+      function OnboardScreen({ onFinish }) {
+        const [password, setPassword] = useState("");
+        const [confirm, setConfirm] = useState("");
+        const [username, setUsername] = useState("DexOS User");
+        const [error, setError] = useState("");
+
+        const handleSet = () => {
+          if (!password || !confirm) {
+            setError("Please enter and confirm a password.");
+            return;
+          }
+          if (password !== confirm) {
+            setError("Passwords do not match.");
+            return;
+          }
+          localStorage.setItem("dexos_password", password);
+          localStorage.setItem("dexos_username", username || "DexOS User");
+          localStorage.setItem("dexos_theme", "light");
+          localStorage.setItem("dexos_wallpaper", "default");
+          localStorage.setItem(
+            "dexos_installed_apps",
+            JSON.stringify(["notes", "calculator", "paint", "tictactoe", "clicker"])
+          );
+          localStorage.setItem("dexos_notes", "");
+          onFinish();
+        };
+
+        return (
+          <div className="login-screen">
+            <div className="login-animated-bg" />
+            <div className="login-card">
+              <div className="login-avatar"></div>
+              <div className="login-title">Welcome to DexOS</div>
+              <div className="login-sub">
+                Set up your account. Password is stored on this device.
+              </div>
+              <input
+                className="login-input"
+                placeholder="Display name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <br />
+              <input
+                type="password"
+                className="login-input"
+                placeholder="Create password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <br />
+              <input
+                type="password"
+                className="login-input"
+                placeholder="Confirm password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+              />
+              <br />
+              <button className="login-button" onClick={handleSet}>
+                Continue to DexOS
+              </button>
+              {error && <div className="login-error">{error}</div>}
+            </div>
+          </div>
+        );
+      }
+
+      function LoginScreen({ onLogin, username }) {
+        const [password, setPassword] = useState("");
+        const [error, setError] = useState("");
+
+        const handleLogin = () => {
+          const stored = localStorage.getItem("dexos_password");
+          if (password === stored) {
+            setError("");
+            onLogin();
+          } else {
+            setError("Incorrect password.");
+          }
+        };
+
+        return (
+          <div className="login-screen">
+            <div className="login-animated-bg" />
+            <div className="login-card">
+              <div className="login-avatar"></div>
+              <div className="login-title">{username || "DexOS User"}</div>
+              <div className="login-sub">Enter password to unlock DexOS.</div>
+              <input
+                type="password"
+                className="login-input"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              />
+              <br />
+              <button className="login-button" onClick={handleLogin}>
+                Log In
+              </button>
+              {error && <div className="login-error">{error}</div>}
+            </div>
+          </div>
+        );
+      }
+
+      function BrowserApp() {
+        const [url, setUrl] = useState("https://example.com");
+        const [currentIndex, setCurrentIndex] = useState(0);
+        const [history, setHistory] = useState(["https://example.com"]);
+
+        const goTo = (newUrl) => {
+          let u = newUrl.trim();
+          if (!u) return;
+          if (!u.startsWith("http://") && !u.startsWith("https://")) {
+            u = "https://" + u;
+          }
+          const newHist = history.slice(0, currentIndex + 1);
+          newHist.push(u);
+          setHistory(newHist);
+          setCurrentIndex(newHist.length - 1);
+        };
+
+        const go = () => goTo(url);
+        const goHome = () => goTo("https://example.com");
+
+        const canBack = currentIndex > 0;
+        const canForward = currentIndex < history.length - 1;
+
+        const back = () => {
+          if (!canBack) return;
+          setCurrentIndex(currentIndex - 1);
+          setUrl(history[currentIndex - 1]);
+        };
+
+        const forward = () => {
+          if (!canForward) return;
+          setCurrentIndex(currentIndex + 1);
+          setUrl(history[currentIndex + 1]);
+        };
+
+        const current = history[currentIndex];
+
+        return (
+          <>
+            <div className="browser-controls">
+              <div className="browser-nav-buttons">
+                <button className="browser-nav-button" onClick={back} disabled={!canBack}>
+                  ←
+                </button>
+                <button className="browser-nav-button" onClick={forward} disabled={!canForward}>
+                  →
+                </button>
+                <button className="browser-nav-button" onClick={goHome}>
+                  ⌂
+                </button>
+              </div>
+              <input
+                className="browser-url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && go()}
+                placeholder="Enter URL"
+              />
+              <button className="browser-button" onClick={go}>
+                Go
+              </button>
+            </div>
+            <iframe className="browser-frame" src={current} title="DexOS Browser" />
+            <div className="browser-history">
+              {history.map((h, i) => (
+                <span key={i} onClick={() => { setCurrentIndex(i); setUrl(h); }}>
+                  {i === currentIndex ? "● " : ""}{h.replace(/^https?:\/\//, "")}
+                </span>
+              ))}
+            </div>
+          </>
+        );
+      }
+
+      function TerminalApp() {
+        const [lines, setLines] = useState([
+          "DexOS Shell v1.0",
+          "Type 'help' for commands.",
+        ]);
+        const [input, setInput] = useState("");
+        const termRef = useRef(null);
+
+        useEffect(() => {
+          if (termRef.current) {
+            termRef.current.scrollTop = termRef.current.scrollHeight;
+          }
+        }, [lines]);
+
+        const handleCommand = (cmd) => {
+          const parts = cmd.trim().split(" ");
+          const base = parts[0];
+          if (!base) return [];
+
+          switch (base) {
+            case "help":
+              return [
+                "Available commands:",
+                "  help     - show this help",
+                "  clear    - clear screen",
+                "  about    - about DexOS",
+                "  echo     - echo text",
+                "  reboot   - fake reboot",
+              ];
+            case "clear":
+              setLines([]);
+              return [];
+            case "about":
+              return ["DexOS v8 – Glass Desktop", "Running fully in your browser."];
+            case "echo":
+              return [parts.slice(1).join(" ")];
+            case "reboot":
+              return ["Reboot command not available from here."];
+            default:
+              return [`Command not found sorry from Snehith: ${base}`];
+          }
+        };
+
+        const onSubmit = (e) => {
+          e.preventDefault();
+          const cmd = input;
+          if (!cmd.trim()) return;
+          setInput("");
+          setLines((prev) => [...prev, `dexos> ${cmd}`]);
+          const out = handleCommand(cmd);
+          if (out.length) {
+            setLines((prev) => [...prev, ...out]);
+          }
+        };
+
+        return (
+          <div className="terminal" ref={termRef}>
+            {lines.map((l, i) => (
+              <div key={i}>{l}</div>
+            ))}
+            <form onSubmit={onSubmit}>
+              <span>dexos&gt; </span>
+              <input
+                className="terminal-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                autoFocus
+              />
+            </form>
+          </div>
+        );
+      }
+
+      function SnakeApp() {
+        const canvasRef = useRef(null);
+        const dirRef = useRef({ x: 1, y: 0 });
+
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          const gridSize = 15;
+          let snake = [{ x: 10, y: 10 }];
+          let food = { x: 5, y: 5 };
+          let interval = null;
+
+          function placeFood() {
+            food = {
+              x: Math.floor(Math.random() * (canvas.width / gridSize)),
+              y: Math.floor(Math.random() * (canvas.height / gridSize)),
+            };
+          }
+
+          function draw() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "lime";
+            snake.forEach((seg) => {
+              ctx.fillRect(
+                seg.x * gridSize,
+                seg.y * gridSize,
+                gridSize - 1,
+                gridSize - 1
+              );
+            });
+
+            ctx.fillStyle = "red";
+            ctx.fillRect(
+              food.x * gridSize,
+              food.y * gridSize,
+              gridSize - 1,
+              gridSize - 1
+            );
+          }
+
+          function step() {
+            const dir = dirRef.current;
+            const head = {
+              x: snake[0].x + dir.x,
+              y: snake[0].y + dir.y,
+            };
+
+            const maxX = canvas.width / gridSize;
+            const maxY = canvas.height / gridSize;
+            if (head.x < 0) head.x = maxX - 1;
+            if (head.x >= maxX) head.x = 0;
+            if (head.y < 0) head.y = maxY - 1;
+            if (head.y >= maxY) head.y = 0;
+
+            if (snake.some((seg) => seg.x === head.x && seg.y === head.y)) {
+              snake = [{ x: 10, y: 10 }];
+              dirRef.current = { x: 1, y: 0 };
+              placeFood();
+            }
+
+            snake.unshift(head);
+
+            if (head.x === food.x && head.y === food.y) {
+              placeFood();
+            } else {
+              snake.pop();
+            }
+
+            draw();
+          }
+
+          function start() {
+            if (interval) clearInterval(interval);
+            interval = setInterval(step, 120);
+          }
+
+          start();
+
+          const handleKey = (e) => {
+            switch (e.key) {
+              case "ArrowUp":
+                if (dirRef.current.y === 1) break;
+                dirRef.current = { x: 0, y: -1 };
+                break;
+              case "ArrowDown":
+                if (dirRef.current.y === -1) break;
+                dirRef.current = { x: 0, y: 1 };
+                break;
+              case "ArrowLeft":
+                if (dirRef.current.x === 1) break;
+                dirRef.current = { x: -1, y: 0 };
+                break;
+              case "ArrowRight":
+                if (dirRef.current.x === -1) break;
+                dirRef.current = { x: 1, y: 0 };
+                break;
+            }
+          };
+
+          window.addEventListener("keydown", handleKey);
+          return () => {
+            window.removeEventListener("keydown", handleKey);
+            if (interval) clearInterval(interval);
+          };
+        }, []);
+
+        const setDir = (x, y) => {
+          const cur = dirRef.current;
+          if (x === 0 && y === -1 && cur.y !== 1) dirRef.current = { x, y };
+          if (x === 0 && y === 1 && cur.y !== -1) dirRef.current = { x, y };
+          if (x === -1 && y === 0 && cur.x !== 1) dirRef.current = { x, y };
+          if (x === 1 && y === 0 && cur.x !== -1) dirRef.current = { x, y };
+        };
+
+        return (
+          <>
+            <canvas
+              ref={canvasRef}
+              className="snake-canvas"
+              width={280}
+              height={280}
+            ></canvas>
+            <p>Use arrow keys or buttons on touch.</p>
+            <div className="snake-controls">
+              <button onClick={() => setDir(0, -1)}>↑</button>
+              <button onClick={() => setDir(-1, 0)}>←</button>
+              <button onClick={() => setDir(1, 0)}>→</button>
+              <button onClick={() => setDir(0, 1)}>↓</button>
+            </div>
+          </>
+        );
+      }
+
+      const DEFAULT_FS = [
+        { type: "folder", name: "Documents" },
+        { type: "folder", name: "Music" },
+        { type: "file", name: "readme.txt" },
+        { type: "file", name: "todo.md" },
+      ];
+
+      function FileExplorerApp() {
+        const [items] = useState(DEFAULT_FS);
+
+        return (
+          <div>
+            <div className="settings-label">DexOS File Explorer</div>
+            <ul className="file-list">
+              {items.map((item, i) => (
+                <li className="file-item" key={i}>
+                  <span className="file-icon">
+                    {item.type === "folder" ? "📁" : "📄"}
+                  </span>
+                  <span className="file-name">{item.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+
+      const TRACKS = [
+        { id: "track1", name: "Calm Horizon" },
+        { id: "track2", name: "Glass Pulse" },
+        { id: "track3", name: "Night Drive" },
+      ];
+
+      function MusicPlayerApp() {
+        const [current, setCurrent] = useState(null);
+        const [isPlaying, setIsPlaying] = useState(false);
+
+        const playTrack = (track) => {
+          setCurrent(track);
+          setIsPlaying(false);
+        };
+
+        const togglePlay = () => {
+          if (!current) return;
+          setIsPlaying((p) => !p);
+        };
+
+        return (
+          <div>
+            <div className="settings-label">DexOS Music Player</div>
+            <ul className="music-list">
+              {TRACKS.map((t) => (
+                <li
+                  key={t.id}
+                  className="music-item"
+                  onClick={() => playTrack(t)}
+                >
+                  <span>{t.name}</span>
+                  <span>{current && current.id === t.id ? "●" : ""}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="music-controls">
+              <span>
+                {current ? `Selected: ${current.name}` : "Select a track above"}
+              </span>
+              <button className="settings-button" onClick={togglePlay}>
+                {isPlaying ? "Pause" : "Play"}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      function NotesApp() {
+        const [text, setText] = useState(
+          localStorage.getItem("dexos_notes") || ""
+        );
+
+        const saveNotes = (value) => {
+          setText(value);
+          localStorage.setItem("dexos_notes", value);
+        };
+
+        return (
+          <div>
+            <div className="settings-label">DexOS Notes</div>
+            <textarea
+              className="notes-textarea"
+              value={text}
+              onChange={(e) => saveNotes(e.target.value)}
+              placeholder="Write your notes here..."
+            />
+          </div>
+        );
+      }
+
+      function CalculatorApp() {
+        const [display, setDisplay] = useState("0");
+        const [stored, setStored] = useState(null);
+        const [op, setOp] = useState(null);
+
+        const inputDigit = (d) => {
+          setDisplay((prev) => (prev === "0" ? String(d) : prev + String(d)));
+        };
+
+        const clearAll = () => {
+          setDisplay("0");
+          setStored(null);
+          setOp(null);
+        };
+
+        const handleOp = (operation) => {
+          setStored(parseFloat(display));
+          setDisplay("0");
+          setOp(operation);
+        };
+
+        const equal = () => {
+          if (op === null || stored === null) return;
+          const current = parseFloat(display);
+          let result = stored;
+          switch (op) {
+            case "+": result = stored + current; break;
+            case "-": result = stored - current; break;
+            case "*": result = stored * current; break;
+            case "/": result = current === 0 ? 0 : stored / current; break;
+          }
+          setDisplay(String(result));
+          setStored(null);
+          setOp(null);
+        };
+
+        return (
+          <div>
+            <div className="settings-label">DexOS Calculator</div>
+            <div className="calc-display">{display}</div>
+            <div className="calc-grid">
+              <button className="calc-button" onClick={clearAll}>C</button>
+              <button className="calc-button" onClick={() => setDisplay("0")}>CE</button>
+              <button className="calc-button op" onClick={() => handleOp("/")}>÷</button>
+              <button className="calc-button op" onClick={() => handleOp("*")}>×</button>
+
+              <button className="calc-button" onClick={() => inputDigit(7)}>7</button>
+              <button className="calc-button" onClick={() => inputDigit(8)}>8</button>
+              <button className="calc-button" onClick={() => inputDigit(9)}>9</button>
+              <button className="calc-button op" onClick={() => handleOp("-")}>−</button>
+
+              <button className="calc-button" onClick={() => inputDigit(4)}>4</button>
+              <button className="calc-button" onClick={() => inputDigit(5)}>5</button>
+              <button className="calc-button" onClick={() => inputDigit(6)}>6</button>
+              <button className="calc-button op" onClick={() => handleOp("+")}>+</button>
+
+              <button className="calc-button" onClick={() => inputDigit(1)}>1</button>
+              <button className="calc-button" onClick={() => inputDigit(2)}>2</button>
+              <button className="calc-button" onClick={() => inputDigit(3)}>3</button>
+              <button className="calc-button" onClick={equal}>=</button>
+            </div>
+          </div>
+        );
+      }
+
+      function PaintApp() {
+        const canvasRef = useRef(null);
+        const drawing = useRef(false);
+        const lastPos = useRef({ x: 0, y: 0 });
+
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }, []);
+
+        const getPos = (evt) => {
+          const canvas = canvasRef.current;
+          const rect = canvas.getBoundingClientRect();
+          let clientX, clientY;
+          if (evt.touches && evt.touches[0]) {
+            clientX = evt.touches[0].clientX;
+            clientY = evt.touches[0].clientY;
+          } else {
+            clientX = evt.clientX;
+            clientY = evt.clientY;
+          }
+          return {
+            x: clientX - rect.left,
+            y: clientY - rect.top,
+          };
+        };
+
+        const startDraw = (e) => {
+          e.preventDefault();
+          drawing.current = true;
+          lastPos.current = getPos(e);
+        };
+
+        const endDraw = (e) => {
+          e.preventDefault();
+          drawing.current = false;
+        };
+
+        const draw = (e) => {
+          e.preventDefault();
+          if (!drawing.current) return;
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          const { x, y } = getPos(e);
+          ctx.strokeStyle = "#000000";
+          ctx.lineWidth = 2;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(lastPos.current.x, lastPos.current.y);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          lastPos.current = { x, y };
+        };
+
+        return (
+          <div>
+            <div className="settings-label">DexOS Paint</div>
+            <canvas
+              ref={canvasRef}
+              width={320}
+              height={220}
+              className="paint-canvas"
+              onMouseDown={startDraw}
+              onMouseUp={endDraw}
+              onMouseLeave={endDraw}
+              onMouseMove={draw}
+              onTouchStart={startDraw}
+              onTouchEnd={endDraw}
+              onTouchCancel={endDraw}
+              onTouchMove={draw}
+            ></canvas>
+            <p>Draw with mouse or touch.</p>
+          </div>
+        );
+      }
+
+      function TicTacToeApp() {
+        const [board, setBoard] = useState(Array(9).fill(null));
+        const [xIsNext, setXIsNext] = useState(true);
+
+        const winner = calculateWinner(board);
+
+        function calculateWinner(b) {
+          const lines = [
+            [0,1,2],[3,4,5],[6,7,8],
+            [0,3,6],[1,4,7],[2,5,8],
+            [0,4,8],[2,4,6],
+          ];
+          for (const [a,b2,c] of lines) {
+            if (b[a] && b[a] === b[b2] && b[a] === b[c]) return b[a];
+          }
+          return null;
+        }
+
+        const handleClick = (i) => {
+          if (board[i] || winner) return;
+          const newBoard = board.slice();
+          newBoard[i] = xIsNext ? "X" : "O";
+          setBoard(newBoard);
+          setXIsNext(!xIsNext);
+        };
+
+        const reset = () => {
+          setBoard(Array(9).fill(null));
+          setXIsNext(true);
+        };
+
+        return (
+          <div>
+            <div className="settings-label">Tic Tac Toe</div>
+            <p>{winner ? `Winner: ${winner}` : `Next: ${xIsNext ? "X" : "O"}`}</p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 40px)",
+                gap: "4px",
+              }}
+            >
+              {board.map((v, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleClick(i)}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    fontSize: 18,
+                    borderRadius: 6,
+                    border: "1px solid rgba(0,0,0,0.3)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+            <button className="settings-button" onClick={reset} style={{ marginTop: 8 }}>
+              Reset
+            </button>
+          </div>
+        );
+      }
+
+      function ClickerApp() {
+        const [count, setCount] = useState(0);
+        return (
+          <div>
+            <div className="settings-label">Clicker Game</div>
+            <p>Clicks: {count}</p>
+            <button
+              className="settings-button"
+              onClick={() => setCount(count + 1)}
+            >
+              Click me
+            </button>
+          </div>
+        );
+      }
+
+      // Pong game (simple)
+      function PongApp() {
+        const canvasRef = useRef(null);
+        const [score, setScore] = useState(0);
+
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          let paddleX = canvas.width / 2 - 30;
+          const paddleWidth = 60;
+          const paddleHeight = 8;
+          let ballX = canvas.width / 2;
+          let ballY = canvas.height / 2;
+          let ballDX = 2;
+          let ballDY = 2;
+          let animationId;
+
+          function draw() {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(paddleX, canvas.height - 20, paddleWidth, paddleHeight);
+
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, 5, 0, Math.PI * 2);
+            ctx.fillStyle = "lime";
+            ctx.fill();
+            ctx.closePath();
+          }
+
+          function step() {
+            ballX += ballDX;
+            ballY += ballDY;
+
+            if (ballX < 0 || ballX > canvas.width) ballDX *= -1;
+            if (ballY < 0) ballDY *= -1;
+
+            if (
+              ballY > canvas.height - 20 &&
+              ballX > paddleX &&
+              ballX < paddleX + paddleWidth
+            ) {
+              ballDY *= -1;
+              setScore((s) => s + 1);
+            }
+
+            if (ballY > canvas.height + 10) {
+              ballX = canvas.width / 2;
+              ballY = canvas.height / 2;
+              ballDX = 2;
+              ballDY = 2;
+              setScore(0);
+            }
+
+            draw();
+            animationId = requestAnimationFrame(step);
+          }
+
+          draw();
+          animationId = requestAnimationFrame(step);
+
+          const handleMove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const x = clientX - rect.left;
+            paddleX = Math.max(0, Math.min(canvas.width - paddleWidth, x - paddleWidth / 2));
+          };
+
+          canvas.addEventListener("mousemove", handleMove);
+          canvas.addEventListener("touchmove", handleMove);
+
+          return () => {
+            cancelAnimationFrame(animationId);
+            canvas.removeEventListener("mousemove", handleMove);
+            canvas.removeEventListener("touchmove", handleMove);
+          };
+        }, []);
+
+        return (
+          <div>
+            <div className="settings-label">Pong</div>
+            <p>Score: {score}</p>
+            <canvas
+              ref={canvasRef}
+              width={320}
+              height={220}
+              className="paint-canvas"
+            ></canvas>
+            <p>Move paddle with mouse or touch.</p>
+          </div>
+        );
+      }
+
+      // Dodge game: avoid falling blocks
+      function DodgeApp() {
+        const canvasRef = useRef(null);
+        const [score, setScore] = useState(0);
+
+        useEffect(() => {
+          const canvas = canvasRef.current;
+          const ctx = canvas.getContext("2d");
+          let playerX = canvas.width / 2 - 10;
+          const playerSize = 20;
+          let obstacles = [];
+          let tick = 0;
+          let animationId;
+          let alive = true;
+
+          function spawnObstacle() {
+            obstacles.push({
+              x: Math.random() * (canvas.width - 20),
+              y: -20,
+              size: 20,
+              speed: 2 + Math.random() * 2,
+            });
+          }
+
+          function draw() {
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "lime";
+            ctx.fillRect(playerX, canvas.height - 30, playerSize, playerSize);
+
+            ctx.fillStyle = "red";
+            obstacles.forEach((o) => {
+              ctx.fillRect(o.x, o.y, o.size, o.size);
+            });
+          }
+
+          function step() {
+            if (!alive) {
+              ctx.fillStyle = "rgba(0,0,0,0.7)";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.fillStyle = "white";
+              ctx.fillText("Game Over", canvas.width / 2 - 30, canvas.height / 2);
+              animationId = requestAnimationFrame(step);
+              return;
+            }
+
+            tick++;
+            if (tick % 40 === 0) {
+              spawnObstacle();
+            }
+
+            obstacles.forEach((o) => {
+              o.y += o.speed;
+            });
+
+            obstacles = obstacles.filter((o) => o.y < canvas.height + 20);
+
+            obstacles.forEach((o) => {
+              const px = playerX;
+              const py = canvas.height - 30;
+              if (
+                o.x < px + playerSize &&
+                o.x + o.size > px &&
+                o.y < py + playerSize &&
+                o.y + o.size > py
+              ) {
+                alive = false;
+              }
+            });
+
+            if (alive) setScore((s) => s + 1);
+
+            draw();
+            animationId = requestAnimationFrame(step);
+          }
+
+          draw();
+          animationId = requestAnimationFrame(step);
+
+          const handleMove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const x = clientX - rect.left;
+            playerX = Math.max(0, Math.min(canvas.width - playerSize, x - playerSize / 2));
+          };
+
+          canvas.addEventListener("mousemove", handleMove);
+          canvas.addEventListener("touchmove", handleMove);
+
+          return () => {
+            cancelAnimationFrame(animationId);
+            canvas.removeEventListener("mousemove", handleMove);
+            canvas.removeEventListener("touchmove", handleMove);
+          };
+        }, []);
+
+        return (
+          <div>
+            <div className="settings-label">Dodge</div>
+            <p>Survive as long as possible. Score: {score}</p>
+            <canvas
+              ref={canvasRef}
+              width={320}
+              height={220}
+              className="paint-canvas"
+            ></canvas>
+            <p>Move with mouse or touch.</p>
+          </div>
+        );
+      }
+
+      const AVAILABLE_APPS = [
+        { id: "notes",      name: "Notes",      emoji: "📝" },
+        { id: "calculator", name: "Calculator", emoji: "🧮" },
+        { id: "paint",      name: "Paint",      emoji: "🎨" },
+        { id: "tictactoe",  name: "Tic Tac Toe", emoji: "⭕" },
+        { id: "clicker",    name: "Clicker",    emoji: "🖱️" },
+        { id: "pong",       name: "Pong",       emoji: "🏓" },
+        { id: "dodge",      name: "Dodge",      emoji: "🟥" },
+      ];
+
+      function AppStoreApp({ installedApps, onInstalledChange }) {
+        const toggleApp = (id) => {
+          const set = new Set(installedApps);
+          if (set.has(id)) {
+            set.delete(id);
+          } else {
+            set.add(id);
+          }
+          const arr = Array.from(set);
+          localStorage.setItem("dexos_installed_apps", JSON.stringify(arr));
+          onInstalledChange(arr);
+        };
+
+        const appsSet = new Set(installedApps);
+
+        return (
+          <div>
+            <div className="settings-label">DexOS App Store</div>
+            <div className="appstore-grid">
+              {AVAILABLE_APPS.map((app) => (
+                <div key={app.id} className="appstore-card">
+                  <div className="appstore-emoji">{app.emoji}</div>
+                  <div>{app.name}</div>
+                  <button
+                    className="appstore-button"
+                    onClick={() => toggleApp(app.id)}
+                  >
+                    {appsSet.has(app.id) ? "Uninstall" : "Install"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      function SettingsApp({ username, theme, wallpaper, onChange }) {
+        const [name, setName] = useState(username || "DexOS User");
+        const [selectedTheme, setSelectedTheme] = useState(theme || "light");
+        const [selectedWallpaper, setSelectedWallpaper] = useState(
+          wallpaper || "default"
+        );
+
+        const saveSettings = () => {
+          const newSettings = {
+            username: name.trim() || "DexOS User",
+            theme: selectedTheme,
+            wallpaper: selectedWallpaper,
+          };
+          localStorage.setItem("dexos_username", newSettings.username);
+          localStorage.setItem("dexos_theme", newSettings.theme);
+          localStorage.setItem("dexos_wallpaper", newSettings.wallpaper);
+          onChange(newSettings);
+        };
+
+        return (
+          <div>
+            <div className="settings-section">
+              <div className="settings-label">Profile</div>
+              <div className="settings-row">
+                <input
+                  className="settings-input"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Display name"
+                />
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <div className="settings-label">Theme</div>
+              <div className="settings-row">
+                <label className="settings-chip">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="light"
+                    checked={selectedTheme === "light"}
+                    onChange={() => setSelectedTheme("light")}
+                  />
+                  <span>Light</span>
+                </label>
+                <label className="settings-chip">
+                  <input
+                    type="radio"
+                    name="theme"
+                    value="dark"
+                    checked={selectedTheme === "dark"}
+                    onChange={() => setSelectedTheme("dark")}
+                  />
+                  <span>Dark</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <div className="settings-label">Wallpaper</div>
+              <div className="settings-row">
+                <label className="settings-chip">
+                  <input
+                    type="radio"
+                    name="wallpaper"
+                    value="default"
+                    checked={selectedWallpaper === "default"}
+                    onChange={() => setSelectedWallpaper("default")}
+                  />
+                  <span>Default</span>
+                </label>
+                <label className="settings-chip">
+                  <input
+                    type="radio"
+                    name="wallpaper"
+                    value="ocean"
+                    checked={selectedWallpaper === "ocean"}
+                    onChange={() => setSelectedWallpaper("ocean")}
+                  />
+                  <span>Ocean</span>
+                </label>
+                <label className="settings-chip">
+                  <input
+                    type="radio"
+                    name="wallpaper"
+                    value="sunset"
+                    checked={selectedWallpaper === "sunset"}
+                    onChange={() => setSelectedWallpaper("sunset")}
+                  />
+                  <span>Sunset</span>
+                </label>
+                <label className="settings-chip">
+                  <input
+                    type="radio"
+                    name="wallpaper"
+                    value="neon"
+                    checked={selectedWallpaper === "neon"}
+                    onChange={() => setSelectedWallpaper("neon")}
+                  />
+                  <span>Neon</span>
+                </label>
+              </div>
+            </div>
+
+            <button className="settings-button" onClick={saveSettings}>
+              Save settings
+            </button>
+          </div>
+        );
+      }
+
+      function ShutdownScreen() {
+        return (
+          <div className="shutdown-screen">
+            <h1>DexOS is shutting down...</h1>
+            <div className="shutdown-sub">
+              Please restart your device manually to continue.
+            </div>
+          </div>
+        );
+      }
+
+      function Desktop({
+        onShutdown,
+        username,
+        theme,
+        wallpaper,
+        installedApps,
+        onSettingsChange,
+        onInstalledAppsChange,
+      }) {
+        const [showBrowser, setShowBrowser] = useState(false);
+        const [showTerminal, setShowTerminal] = useState(false);
+        const [showSnake, setShowSnake] = useState(false);
+        const [showSettings, setShowSettings] = useState(false);
+        const [showFileExplorer, setShowFileExplorer] = useState(false);
+        const [showMusic, setShowMusic] = useState(false);
+        const [showAppStore, setShowAppStore] = useState(false);
+        const [showNotes, setShowNotes] = useState(false);
+        const [showCalc, setShowCalc] = useState(false);
+        const [showPaint, setShowPaint] = useState(false);
+        const [showTicTacToe, setShowTicTacToe] = useState(false);
+        const [showClicker, setShowClicker] = useState(false);
+        const [showPong, setShowPong] = useState(false);
+        const [showDodge, setShowDodge] = useState(false);
+
+        const [time, setTime] = useState(new Date());
+        const [spotlightOpen, setSpotlightOpen] = useState(false);
+        const [spotlightQuery, setSpotlightQuery] = useState("");
+
+        const dockRef = useRef(null);
+
+        useEffect(() => {
+          const id = setInterval(() => setTime(new Date()), 1000);
+          return () => clearInterval(id);
+        }, []);
+
+        useEffect(() => {
+          const handleKey = (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === " ") {
+              e.preventDefault();
+              setSpotlightOpen((prev) => !prev);
+              setSpotlightQuery("");
+            }
+          };
+          window.addEventListener("keydown", handleKey);
+          return () => window.removeEventListener("keydown", handleKey);
+        }, []);
+
+        const desktopClass = "desktop " + (theme === "dark" ? "dark" : "light");
+
+        const wallpaperClassMap = {
+          default: "wallpaper-default",
+          ocean: "wallpaper-ocean",
+          sunset: "wallpaper-sunset",
+          neon:   "wallpaper-neon",
+        };
+
+        const wallpaperClass =
+          wallpaperClassMap[wallpaper] || wallpaperClassMap.default;
+
+        const appsSet = new Set(installedApps || []);
+
+        const handleDockMouseMove = (e) => {
+          const dock = dockRef.current;
+          if (!dock) return;
+          const icons = dock.querySelectorAll(".dock-icon");
+          const mouseX = e.clientX;
+          icons.forEach((icon) => {
+            const iconRect = icon.getBoundingClientRect();
+            const iconCenter = iconRect.left + iconRect.width / 2;
+            const distance = Math.abs(mouseX - iconCenter);
+            const maxDist = 120;
+            const scale =
+              distance > maxDist ? 1 : 1.4 - (distance / maxDist) * 0.4;
+            icon.style.setProperty("--dock-scale", scale.toString());
+          });
+        };
+
+        const resetDockMagnification = () => {
+          const dock = dockRef.current;
+          if (!dock) return;
+          const icons = dock.querySelectorAll(".dock-icon");
+          icons.forEach((icon) =>
+            icon.style.setProperty("--dock-scale", "1")
+          );
+        };
+
+        const openAppById = (id) => {
+          switch (id) {
+            case "notes": setShowNotes(true); break;
+            case "calculator": setShowCalc(true); break;
+            case "paint": setShowPaint(true); break;
+            case "tictactoe": setShowTicTacToe(true); break;
+            case "clicker": setShowClicker(true); break;
+            case "pong": setShowPong(true); break;
+            case "dodge": setShowDodge(true); break;
+          }
+        };
+
+        const spotlightResults = [
+          { id: "browser", name: "Browser", action: () => setShowBrowser(true) },
+          { id: "terminal", name: "Terminal", action: () => setShowTerminal(true) },
+          { id: "snake", name: "Snake", action: () => setShowSnake(true) },
+          { id: "files", name: "Files", action: () => setShowFileExplorer(true) },
+          { id: "music", name: "Music", action: () => setShowMusic(true) },
+          { id: "settings", name: "Settings", action: () => setShowSettings(true) },
+          { id: "store", name: "App Store", action: () => setShowAppStore(true) },
+          ...AVAILABLE_APPS
+            .filter((a) => appsSet.has(a.id))
+            .map((a) => ({
+              id: a.id,
+              name: a.name,
+              action: () => openAppById(a.id),
+            })),
+        ].filter((item) =>
+          item.name.toLowerCase().includes(spotlightQuery.toLowerCase())
+        );
+
+        const handleSpotlightKeyDown = (e) => {
+          if (e.key === "Enter" && spotlightResults[0]) {
+            spotlightResults[0].action();
+            setSpotlightOpen(false);
+          }
+        };
+
+        return (
+          <div className={desktopClass}>
+            <div className={`desktop-wallpaper-layer ${wallpaperClass}`} />
+
+            {spotlightOpen && (
+              <div className="spotlight-bar">
+                🔍
+                <input
+                  className="spotlight-input"
+                  placeholder="Search apps..."
+                  value={spotlightQuery}
+                  onChange={(e) => setSpotlightQuery(e.target.value)}
+                  onKeyDown={handleSpotlightKeyDown}
+                  autoFocus
+                />
+              </div>
+            )}
+
+            <div className="desktop-icons">
+              <div className="icon" onClick={() => setShowBrowser(true)}>
+                <div className="icon-emoji">🌐</div>
+                <span>Browser</span>
+              </div>
+              <div className="icon" onClick={() => setShowTerminal(true)}>
+                <div className="icon-emoji">>_</div>
+                <span>Terminal</span>
+              </div>
+              <div className="icon" onClick={() => setShowSnake(true)}>
+                <div className="icon-emoji">🐍</div>
+                <span>Snake</span>
+              </div>
+              <div className="icon" onClick={() => setShowFileExplorer(true)}>
+                <div className="icon-emoji">📁</div>
+                <span>Files</span>
+              </div>
+              <div className="icon" onClick={() => setShowMusic(true)}>
+                <div className="icon-emoji">🎵</div>
+                <span>Music</span>
+              </div>
+              <div className="icon" onClick={() => setShowSettings(true)}>
+                <div className="icon-emoji">⚙️</div>
+                <span>Settings</span>
+              </div>
+              <div className="icon" onClick={() => setShowAppStore(true)}>
+                <div className="icon-emoji">🛒</div>
+                <span>App Store</span>
+              </div>
+              <div className="icon" onClick={onShutdown}>
+                <div className="icon-emoji">⏻</div>
+                <span>Shutdown</span>
+              </div>
+
+              {appsSet.has("notes") && (
+                <div className="icon" onClick={() => setShowNotes(true)}>
+                  <div className="icon-emoji">📝</div>
+                  <span>Notes</span>
+                </div>
+              )}
+              {appsSet.has("calculator") && (
+                <div className="icon" onClick={() => setShowCalc(true)}>
+                  <div className="icon-emoji">🧮</div>
+                  <span>Calculator</span>
+                </div>
+              )}
+              {appsSet.has("paint") && (
+                <div className="icon" onClick={() => setShowPaint(true)}>
+                  <div className="icon-emoji">🎨</div>
+                  <span>Paint</span>
+                </div>
+              )}
+              {appsSet.has("tictactoe") && (
+                <div className="icon" onClick={() => setShowTicTacToe(true)}>
+                  <div className="icon-emoji">⭕</div>
+                  <span>Tic Tac Toe</span>
+                </div>
+              )}
+              {appsSet.has("clicker") && (
+                <div className="icon" onClick={() => setShowClicker(true)}>
+                  <div className="icon-emoji">🖱️</div>
+                  <span>Clicker</span>
+                </div>
+              )}
+              {appsSet.has("pong") && (
+                <div className="icon" onClick={() => setShowPong(true)}>
+                  <div className="icon-emoji">🏓</div>
+                  <span>Pong</span>
+                </div>
+              )}
+              {appsSet.has("dodge") && (
+                <div className="icon" onClick={() => setShowDodge(true)}>
+                  <div className="icon-emoji">🟥</div>
+                  <span>Dodge</span>
+                </div>
+              )}
+            </div>
+
+            <div
+              className="dock"
+              ref={dockRef}
+              onMouseMove={handleDockMouseMove}
+              onMouseLeave={resetDockMagnification}
+            >
+              <div className="dock-inner">
+                <div className="dock-icon" onClick={() => setShowBrowser(true)}>
+                  🌐
+                </div>
+                <div
+                  className="dock-icon"
+                  onClick={() => setShowTerminal(true)}
+                >
+                  ›_
+                </div>
+                <div className="dock-icon" onClick={() => setShowSnake(true)}>
+                  🐍
+                </div>
+                <div
+                  className="dock-icon"
+                  onClick={() => setShowFileExplorer(true)}
+                >
+                  📁
+                </div>
+                <div className="dock-icon" onClick={() => setShowMusic(true)}>
+                  🎵
+                </div>
+                <div
+                  className="dock-icon"
+                  onClick={() => setShowSettings(true)}
+                >
+                  ⚙️
+                </div>
+                <div
+                  className="dock-icon"
+                  onClick={() => setShowAppStore(true)}
+                >
+                  🛒
+                </div>
+                <div className="dock-separator"></div>
+                <div className="dock-icon" onClick={onShutdown}>
+                  ⏻
+                </div>
+              </div>
+              <div className="taskbar-right">
+                <span>
+                  {time.toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+                <span>{time.toLocaleTimeString()}</span>
+                <span className="taskbar-user">{username}</span>
+              </div>
+            </div>
+
+            {showBrowser && (
+              <DexWindow
+                title="DexOS Browser"
+                initialPos={{ x: 120, y: 70 }}
+                initialSize={{ width: 520, height: 390 }}
+                onClose={() => setShowBrowser(false)}
+              >
+                <BrowserApp />
+              </DexWindow>
+            )}
+
+            {showTerminal && (
+              <DexWindow
+                title="DexOS Terminal"
+                initialPos={{ x: 190, y: 120 }}
+                initialSize={{ width: 460, height: 320 }}
+                onClose={() => setShowTerminal(false)}
+              >
+                <TerminalApp />
+              </DexWindow>
+            )}
+
+            {showSnake && (
+              <DexWindow
+                title="DexOS Snake"
+                initialPos={{ x: 240, y: 90 }}
+                initialSize={{ width: 360, height: 360 }}
+                onClose={() => setShowSnake(false)}
+              >
+                <SnakeApp />
+              </DexWindow>
+            )}
+
+            {showFileExplorer && (
+              <DexWindow
+                title="DexOS Files"
+                initialPos={{ x: 180, y: 130 }}
+                initialSize={{ width: 400, height: 300 }}
+                onClose={() => setShowFileExplorer(false)}
+              >
+                <FileExplorerApp />
+              </DexWindow>
+            )}
+
+            {showMusic && (
+              <DexWindow
+                title="DexOS Music"
+                initialPos={{ x: 240, y: 150 }}
+                initialSize={{ width: 400, height: 240 }}
+                onClose={() => setShowMusic(false)}
+              >
+                <MusicPlayerApp />
+              </DexWindow>
+            )}
+
+            {showSettings && (
+              <DexWindow
+                title="DexOS Settings"
+                initialPos={{ x: 200, y: 110 }}
+                initialSize={{ width: 440, height: 340 }}
+                onClose={() => setShowSettings(false)}
+              >
+                <SettingsApp
+                  username={username}
+                  theme={theme}
+                  wallpaper={wallpaper}
+                  onChange={onSettingsChange}
+                />
+              </DexWindow>
+            )}
+
+            {showAppStore && (
+              <DexWindow
+                title="DexOS App Store"
+                initialPos={{ x: 220, y: 120 }}
+                initialSize={{ width: 440, height: 320 }}
+                onClose={() => setShowAppStore(false)}
+              >
+                <AppStoreApp
+                  installedApps={installedApps}
+                  onInstalledChange={onInstalledAppsChange}
+                />
+              </DexWindow>
+            )}
+
+            {showNotes && (
+              <DexWindow
+                title="DexOS Notes"
+                initialPos={{ x: 260, y: 80 }}
+                initialSize={{ width: 400, height: 300 }}
+                onClose={() => setShowNotes(false)}
+              >
+                <NotesApp />
+              </DexWindow>
+            )}
+
+            {showCalc && (
+              <DexWindow
+                title="DexOS Calculator"
+                initialPos={{ x: 280, y: 130 }}
+                initialSize={{ width: 260, height: 300 }}
+                onClose={() => setShowCalc(false)}
+              >
+                <CalculatorApp />
+              </DexWindow>
+            )}
+
+            {showPaint && (
+              <DexWindow
+                title="DexOS Paint"
+                initialPos={{ x: 200, y: 80 }}
+                initialSize={{ width: 360, height: 320 }}
+                onClose={() => setShowPaint(false)}
+              >
+                <PaintApp />
+              </DexWindow>
+            )}
+
+            {showTicTacToe && (
+              <DexWindow
+                title="Tic Tac Toe"
+                initialPos={{ x: 320, y: 150 }}
+                initialSize={{ width: 260, height: 260 }}
+                onClose={() => setShowTicTacToe(false)}
+              >
+                <TicTacToeApp />
+              </DexWindow>
+            )}
+
+            {showClicker && (
+              <DexWindow
+                title="Clicker Game"
+                initialPos={{ x: 240, y: 200 }}
+                initialSize={{ width: 260, height: 220 }}
+                onClose={() => setShowClicker(false)}
+              >
+                <ClickerApp />
+              </DexWindow>
+            )}
+
+            {showPong && (
+              <DexWindow
+                title="Pong"
+                initialPos={{ x: 260, y: 110 }}
+                initialSize={{ width: 360, height: 320 }}
+                onClose={() => setShowPong(false)}
+              >
+                <PongApp />
+              </DexWindow>
+            )}
+
+            {showDodge && (
+              <DexWindow
+                title="Dodge"
+                initialPos={{ x: 230, y: 140 }}
+                initialSize={{ width: 360, height: 320 }}
+                onClose={() => setShowDodge(false)}
+              >
+                <DodgeApp />
+              </DexWindow>
+            )}
+          </div>
+        );
+      }
+
+      function App() {
+        const [phase, setPhase] = useState("boot");
+        const [username, setUsername] = useState("DexOS User");
+        const [theme, setTheme] = useState("light");
+        const [wallpaper, setWallpaper] = useState("default");
+        const [installedApps, setInstalledApps] = useState([]);
+
+        useEffect(() => {
+          const storedUser = localStorage.getItem("dexos_username");
+          const storedTheme = localStorage.getItem("dexos_theme");
+          const storedWallpaper = localStorage.getItem("dexos_wallpaper");
+          const storedApps = localStorage.getItem("dexos_installed_apps");
+          if (storedUser) setUsername(storedUser);
+          if (storedTheme) setTheme(storedTheme);
+          if (storedWallpaper) setWallpaper(storedWallpaper);
+          if (storedApps) {
+            try {
+              setInstalledApps(JSON.parse(storedApps));
+            } catch {
+              setInstalledApps([]);
+            }
+          }
+        }, []);
+
+        const afterBoot = () => {
+          const storedPass = localStorage.getItem("dexos_password");
+          if (storedPass) {
+            setPhase("login");
+          } else {
+            setPhase("onboard");
+          }
+        };
+
+        const handleSettingsChange = ({
+          username: newName,
+          theme: newTheme,
+          wallpaper: newWallpaper,
+        }) => {
+          setUsername(newName);
+          setTheme(newTheme);
+          setWallpaper(newWallpaper);
+        };
+
+        const handleInstalledAppsChange = (apps) => {
+          setInstalledApps(apps);
+        };
+
+        if (phase === "boot") {
+          return <BootScreen onDone={afterBoot} />;
+        }
+        if (phase === "onboard") {
+          return (
+            <OnboardScreen
+              onFinish={() => {
+                const storedUser = localStorage.getItem("dexos_username");
+                const storedTheme = localStorage.getItem("dexos_theme");
+                const storedWallpaper = localStorage.getItem("dexos_wallpaper");
+                const storedApps = localStorage.getItem("dexos_installed_apps");
+                if (storedUser) setUsername(storedUser);
+                if (storedTheme) setTheme(storedTheme);
+                if (storedWallpaper) setWallpaper(storedWallpaper);
+                if (storedApps) {
+                  try {
+                    setInstalledApps(JSON.parse(storedApps));
+                  } catch {
+                    setInstalledApps([]);
+                  }
+                }
+                setPhase("desktop");
+              }}
+            />
+          );
+        }
+        if (phase === "login") {
+          return (
+            <LoginScreen
+              username={username}
+              onLogin={() => setPhase("desktop")}
+            />
+          );
+        }
+        if (phase === "shutdown") {
+          return <ShutdownScreen />;
+        }
+        if (phase === "desktop") {
+          return (
+            <Desktop
+              username={username}
+              theme={theme}
+              wallpaper={wallpaper}
+              installedApps={installedApps}
+              onShutdown={() => setPhase("shutdown")}
+              onSettingsChange={handleSettingsChange}
+              onInstalledAppsChange={handleInstalledAppsChange}
+            />
+          );
+        }
+        return null;
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
